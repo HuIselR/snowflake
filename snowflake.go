@@ -14,7 +14,8 @@ import (
 var (
 	// Epoch is set to the twitter snowflake epoch of Nov 04 2010 01:42:54 UTC in milliseconds
 	// You may customize this to set a different epoch for your application.
-	Epoch int64 = 1288834974657
+	//Epoch int64 = 1288834974657
+	Epoch int64 = 1610691403012
 
 	// NodeBits holds the number of bits to use for Node
 	// Remember, you have a total 22 bits to share between Node/Step
@@ -140,26 +141,50 @@ func (n *Node) Generate() ID {
 	n.mu.Lock()
 	defer n.mu.Unlock()
 
+	// 取当前时间与Epoch的差值
+	// 1 << 41 = 2199023255552，理论上说可以用69年
+	// println(time.Now().Add(2199023255552 * 1000000).Format("2006-01-02 15:04:05.000"))
+	// 只要now不超过 2199023255552
+	println(time.Now().Add(2199023255552 * 1000000).Format("2006-01-02 15:04:05.000"))
+	println(time.UnixMilli(2199023255552).Format("2006-01-02 15:04:05.000"))
+
 	now := time.Since(n.epoch).Milliseconds()
 
+	// 存在 在同一毫秒内，生成多个id的情况，所以如果时间相同，则增加步长
 	if now == n.time {
 		n.step = (n.step + 1) & n.stepMask
-
+		// 判断步长是否分配完了，如果分配完了就等待到下一毫秒的到来
 		if n.step == 0 {
 			for now <= n.time {
 				now = time.Since(n.epoch).Milliseconds()
 			}
 		}
 	} else {
+		// 在新的毫秒时，步长初始化为0
 		n.step = 0
 	}
 
+	// 更新节点生产id的时间，用于同一个时间内生产多个id时增加步长用的
 	n.time = now
 
-	r := ID((now)<<n.timeShift |
-		(n.node << n.nodeShift) |
-		(n.step),
-	)
+	//41:		 0000010111010000101110011100101110010000010000000000000000000000
+	//10:		 0000000000000000000000000000000000000000000000000001000000000000
+	//12:		 0000000000000000000000000000000000000000000000000000000000000000
+	//42|10|12:  0000010111010000101110011100101110010000010000000001000000000000
+
+	// 时间戳左移22位，使id的高41位是时间戳
+	t := (now) << n.timeShift
+	// 节点数左移10位，使id的中间10位是节点数
+	node := n.node << n.nodeShift
+	// 步长不移动，使id的后12位为步长数
+	step := n.step
+	// 与运算，其中一个为1则为1，否则为0；使每个变量都能参与运算
+	id := t | node | step
+	r := ID(id)
+
+	fmt.Printf("%064b\n", 7175064050991104000)
+	fmt.Printf("%064b\n", 241664)
+	fmt.Printf("%064b\n", 7175064050991345666)
 
 	return r
 }

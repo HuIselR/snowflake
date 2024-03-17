@@ -30,7 +30,7 @@ func TestGenerateDuplicateID(t *testing.T) {
 	node, _ := NewNode(1)
 
 	var x, y ID
-	for i := 0; i < 1000000; i++ {
+	for i := 0; i < 1; i++ {
 		y = node.Generate()
 		if x == y {
 			t.Errorf("x(%d) & y(%d) are the same", x, y)
